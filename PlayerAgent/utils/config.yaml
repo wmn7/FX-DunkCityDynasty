@@ -1,0 +1,11 @@
+id: 1
+env_setting: "linux"
+client_path: 'xxx'
+rl_server_ip: '127.0.0.1'
+rl_server_port: 42636
+game_server_ip: '47.111.110.225'
+game_server_port: 18001
+machine_server_ip: ''
+machine_server_port: 0
+user_name: 'qmxsardcf17ob'
+episode_horizon: 100000
