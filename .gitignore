@@ -1,6 +1,7 @@
 # Package
 game_package_release/
 rlsdk_logs/
+config.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
