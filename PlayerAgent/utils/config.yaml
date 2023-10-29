@@ -1,6 +1,6 @@
 id: 1
 env_setting: "linux"
-client_path: 'xxx'
+client_path: '/home/wmn/FX-DunkCityDynasty/game_package_release'
 rl_server_ip: '127.0.0.1'
 rl_server_port: 42636
 game_server_ip: '47.111.110.225'
