@@ -1,8 +1,9 @@
-from rllib.models.torch.recurrent_net import RecurrentNetwork
 import torch.nn as nn
 import torch as t
 import numpy as np
-from GAT import GraphAttentionLayer
+
+from PlayerAgent.policy.GAT import GraphAttentionLayer
+from ray.rllib.models.torch.recurrent_net import RecurrentNetwork
 
 class Network(RecurrentNetwork, nn.Module):
     common_layers = {
