@@ -41,8 +41,19 @@ class Network(RecurrentNetwork, nn.Module):
         action / value 输入 : 512
         action hidden layers + output layer:  [256, 52]
         value hidden layer + output layer:    [256, 1]
-        """
 
+        model_config ={
+        "embedding_size": 512,
+        "GNN_output_size": 1024,
+        "GNN_heading_size": 4,
+        "action_policy_size": 256,
+        "value_policy_size": 256,
+        "agent_num": 6,
+        "tau": 1.0,
+
+        }
+                
+        """
         # 找到网络参数 
         # TODO : CHECK
         self.agent_obs_size = 102   # 72+30
@@ -51,7 +62,7 @@ class Network(RecurrentNetwork, nn.Module):
         self.num_outputs = num_outputs
         self.GNN_output_size = model_config["GNN_output_size"]
         self.GNN_heading_size = model_config["GNN_heading_size"]
-        
+
         self.action_policy_size = model_config["action_policy_size"]
         self.value_policy_size = model_config["value_policy_size"]
 
@@ -75,13 +86,13 @@ class Network(RecurrentNetwork, nn.Module):
                                                    batch_first = True)
             
             self.common_layers["GNN_0"] = nn.ModuleList([GraphAttentionLayer(self.embedding_size//self.GNN_heading_size,
-                                                                             self.GNN_heading_size,
+                                                                             self.GNN_output_size//self.GNN_heading_size,
                                                                              dropout=False,
                                                                              alpha=0,
                                                                              concat=True) for _ in range(self.GNN_heading_size)])
             
             self.common_layers["GNN_1"] = nn.ModuleList([GraphAttentionLayer(self.GNN_heading_size//self.GNN_heading_size,
-                                                                             self.GNN_heading_size,
+                                                                             self.GNN_output_size//self.GNN_heading_size,
                                                                              dropout=False,
                                                                              alpha=0,
                                                                              concat=True) for _ in range(self.GNN_heading_size)])
