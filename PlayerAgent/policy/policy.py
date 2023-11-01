@@ -50,11 +50,20 @@ class Network(RecurrentNetwork, nn.Module):
         "value_policy_size": 256,
         "agent_num": 6,
         "tau": 1.0,
-
         }
+        num_ouputs: 1024
                 
         """
         # 找到网络参数 
+        model_config ={
+        "embedding_size": 512,
+        "GNN_output_size": 1024,
+        "GNN_heading_size": 4,
+        "action_policy_size": 256,
+        "value_policy_size": 256,
+        "agent_num": 6,
+        "tau": 1.0,
+        }
         # TODO : CHECK
         self.agent_obs_size = 102   # 72+30
         self.embedding_size = model_config["embedding_size"]
