@@ -2,9 +2,9 @@ import numpy as np
 import torch as t
 import torch.nn as nn
 from ray.rllib.models.torch.recurrent_net import RecurrentNetwork
-
+from ray.rllib.utils.annotations import override
 from PlayerAgent.policy.GAT import GraphAttentionLayer
-
+from ray.rllib.models.modelv2 import ModelV2
 
 class Network(RecurrentNetwork, nn.Module):
 
@@ -69,7 +69,7 @@ class Network(RecurrentNetwork, nn.Module):
             "value_policy_size": 256,
             "agent_num": 6,
             "tau": 1.0,
-            "rnn_output": 1024,
+            "rnn_output": 256,
         }
         self.agent_obs_size = 102  # 72+30
         self.embedding_size = model_config["embedding_size"]
@@ -147,19 +147,19 @@ class Network(RecurrentNetwork, nn.Module):
             # 设置 RNN模块
             # batch first  [batch,seq_len,observation]
             self.RNN = nn.GRU(self.embedding_size,
-                                               self.num_outputs,
+                                               self.rnn_output,
                                                1,
                                                batch_first=True)
 
             self.GNN_0 = nn.ModuleList(
-                [GraphAttentionLayer(self.embedding_size // self.GNN_heading_size,
+                [GraphAttentionLayer(self.rnn_output,
                                      self.GNN_output_size // self.GNN_heading_size,
                                      dropout=False,
                                      alpha=0,
                                      concat=True) for _ in range(self.GNN_heading_size)])
 
             self.GNN_1 = nn.ModuleList(
-                [GraphAttentionLayer(self.GNN_heading_size // self.GNN_heading_size,
+                [GraphAttentionLayer(self.GNN_output_size // self.GNN_heading_size,
                                      self.GNN_output_size // self.GNN_heading_size,
                                      dropout=False,
                                      alpha=0,
@@ -185,6 +185,8 @@ class Network(RecurrentNetwork, nn.Module):
                                nn.Linear(self.value_policy_size, 1)) for _ in range(self.player_typenum)
             ])
 
+
+    @override(RecurrentNetwork)
     def forward(
             self,
             input_dict,
@@ -193,14 +195,13 @@ class Network(RecurrentNetwork, nn.Module):
         assert seq_lens is not None
         # print("DEBUG input_dict_key", input_dict.keys())
         # torch.Size([32, 520])
-        print("DEBUG obs", input_dict["obs"].shape)
-
+        print("DEBUG obs_flat", input_dict["obs_flat"].shape)
 
         # TODO: self._wrapped_forward
-        wrapped_out, _ = self._wrapped_forward(input_dict, [], None)
-        input_dict["obs_flat"] = wrapped_out
+        # wrapped_out, _ = self._wrapped_forward(input_dict, [], None)
+        # input_dict["obs_flat"] = wrapped_out
         # input_dict["obs_flat"] 形状  [batch_size, vec_size]
-        return super().forward(input_dict["obs_flat"], state, seq_lens)
+        return super().forward(input_dict, state, seq_lens)
 
     def forward_rnn(self, inputs, state, seq_lens):
         # 输入
@@ -234,13 +235,12 @@ class Network(RecurrentNetwork, nn.Module):
         # size:  [batch_size,agent_num,seq_len,agent_vec_size+global_vec_size]
         batch_agent_seq_inputs = batch_seq_agent_inputs.transpose(1, 2)
         # flatten: [batch_size*agent_num,seq_len,agent_vec_size+global_vec_size]
-        batch_agent_flat_seq_inputs = batch_agent_seq_inputs.view(batch_size * agent_num, seq_len, -1)
+        batch_agent_flat_seq_inputs = batch_agent_seq_inputs.reshape(batch_size * agent_num, seq_len, -1)
 
         # hidden_state 处理
-        print("debug", len(state))
-        print("debug", state[0].shape)
-        # print("debug", state[1].shape)
-        batch_agent_hidden_state = state[0].view(batch_size * agent_num, -1)
+        # print("debug", len(state))
+        # print("debug", state[0].shape)
+        batch_agent_hidden_state = state[0].reshape(batch_size * agent_num, -1)
 
         # 获取每一个智能体的player type:  在此假设每一个agent的observation 第一个index表示player_type
         # 对其进行embedding
@@ -254,13 +254,16 @@ class Network(RecurrentNetwork, nn.Module):
         for i in range(batch_size * agent_num):
             # size: [seq_len,agent_vec_size+global_vec_size]
             vec = batch_agent_flat_seq_inputs[i, :, 1:]
-            player_type_index = vec.cpu().numpy()[0, 0]
+            player_type_index = int(vec.cpu().numpy()[0, 0])
             embedding = self.embeding_act(
                 self.type_bedding[player_type_index](vec)
             )
 
             # RNN 操作
-            rnn_embedding, h = self.RNN(embedding, batch_agent_hidden_state[i])
+            print('embedding', embedding.shape) # torch.Size([1, 512])
+            # print('batch_agent_hidden_state_i', batch_agent_hidden_state.shape) # torch.Size([1, 1024]
+            rnn_embedding, h = self.RNN(embedding, batch_agent_hidden_state[i].unsqueeze(0))
+            print('rnn_embedding', rnn_embedding.shape) # torch.Size([1, 1024])
 
             GNN_inputs_list.append(rnn_embedding)
             output_hidden_states_list.append(h)
@@ -271,10 +274,10 @@ class Network(RecurrentNetwork, nn.Module):
         # size: [batch_size,agent_num]
         player_type_np = player_type_np.reshape(-1, agent_num)
         # size: [batch_size]
-        player_type_np = player_type_np[:, 0]
+        self.player_type_np = player_type_np[:, 0]
 
         # [batch,agent_num, -1]
-        GNN_input = t.cat(GNN_inputs_list, dim=0).view(batch_size, agent_num, -1)
+        GNN_input = t.cat(GNN_inputs_list, dim=0).reshape(batch_size, agent_num, -1)
         # [batch*agent_num, -1]
         output_hidden_states = t.cat(output_hidden_states_list, dim=0)
         # 进入GNN
@@ -282,15 +285,20 @@ class Network(RecurrentNetwork, nn.Module):
         GNN_0 = t.cat(
             [t.cat([gat(GNN_input[i, :, :]) for gat in self.GNN_0], -1) for i in range(batch_size)])
 
+        #TODO
         # size: [batch_size,agent_num,-1]
-        self._features = [t.cat([gat(GNN_0[i, :, :]) for gat in self.GNN_1]) for i in
-                          range(batch_size)]
+        # self._features = [t.cat([gat(GNN_0[i, :, :]) for gat in self.GNN_1]) for i in
+        #                   range(batch_size)]
+
+        self._features = GNN_0 # torch.Size([192, 1024])
+        self._features = self._features.reshape(batch_size, agent_num, -1)
+        print("self._features", self._features.shape) # torch.Size([32, 6, 1024])
 
         # 经过最终的action policy + value policy
 
         # 经过 action_policy
         # size:  [batch_size,output_size]
-        action_logit = t.cat([self.action_nn[i](self._features[i, 0, :]) for i in range(batch_size)],
+        action_logit = t.cat([self.action_nn[self.player_type_np[i]](self._features[i, 0, :]) for i in range(batch_size)],
                              dim=0)
         action_logit = action_logit.unsqueeze(1)
         # value :
@@ -301,19 +309,37 @@ class Network(RecurrentNetwork, nn.Module):
         # 加入 action mask
         zero_matrix = t.zeros_like(action_logit)
         action_logit = t.where(action_masks != 0, action_logit, zero_matrix)
+        print("action_logit", action_logit.shape) # torch.Size([32, 1, 52]
 
-        return action_logit, output_hidden_states
+        return action_logit, [output_hidden_states]
 
     def value_function(self):
+        """
+        @override(ModelV2)
+        def value_function(self):
+            assert self._cur_value is not None, "must call forward() first"
+            return self._cur_value
+
+        """
         assert self._features is not None, "must call forward() first"
         batch_size = self._features.shape[0]
-        solo_value = t.cat([self.solo_value_nn[i](self._features[i, 0, :]) for i in range(batch_size)],
+        solo_value = t.cat([self.solo_value_nn[self.player_type_np[i]](self._features[i, 0, :]) for i in range(batch_size)],
                            dim=0)
-        team_value = t.cat([self.team_value_nn[i](
+        team_value = t.cat([self.team_value_nn[self.player_type_np[i]](
             self._features[i, 0, :] + self._features[i, 2, :] + self._features[i, 2, :])
             for i in range(batch_size)], dim=0)
         value = self.tau * solo_value + (1 - self.tau) * team_value
         return t.reshape(value, [-1])
 
+    @override(ModelV2)
     def get_initial_state(self):
-        return t.zeros((1, self.rnn_output))
+        """
+        @override(ModelV2)
+        def get_initial_state(self):
+            # Place hidden states on same device as model.
+            h = [self.fc1.weight.new(
+                1, self.rnn_hidden_dim).zero_().squeeze(0)]
+            return h
+
+        """
+        return [t.zeros((1, self.rnn_output*self.agent_num))]
