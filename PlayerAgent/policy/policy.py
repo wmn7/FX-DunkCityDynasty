@@ -45,7 +45,6 @@ class Network(RecurrentNetwork, nn.Module):
         "value_policy_size": 256,
         "agent_num": 6,
         "tau": 1.0,
-
         }
 
         """
@@ -72,6 +71,7 @@ class Network(RecurrentNetwork, nn.Module):
             "rnn_output": 1024,
         }
         self.agent_obs_size = 102  # 72+30
+
         self.embedding_size = model_config["embedding_size"]
         self.action_dim = 52
         self.num_outputs = num_outputs
@@ -146,6 +146,7 @@ class Network(RecurrentNetwork, nn.Module):
 
             # 设置 RNN模块
             # batch first  [batch,seq_len,observation]
+            
             self.RNN = nn.GRU(self.embedding_size,
                                                self.num_outputs,
                                                1,

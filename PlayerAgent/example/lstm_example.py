@@ -35,7 +35,7 @@ class MyCustomModel(TorchModelV2):
 
 if __name__ == "__main__":
     ray.init()
-
+    
     # Register the above custom model.
     ModelCatalog.register_custom_model("my_torch_model", MyCustomModel)
     

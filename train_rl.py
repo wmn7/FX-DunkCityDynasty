@@ -2,7 +2,7 @@
 @Author: WANG Maonan
 @Date: 2023-11-01 21:05:16
 @Description: Train for RL
-@LastEditTime: 2023-11-01 21:09:10
+@LastEditTime: 2023-11-01 21:19:43
 '''
 import sys,os
 sys.path.append(os.getcwd())
@@ -15,14 +15,14 @@ from ray.rllib.utils.annotations import override
 
 from DunkCityDynasty.env.ray_env import RayEnv
 
-from PlayerAgent.env_wrapper import ray_wrapper
+from PlayerAgent.env_wrapper.ray_wrapper import RayWrapper
 from PlayerAgent.policy.policy import Network
 from PlayerAgent.utils.read_config import read_config
 
 if __name__ == '__main__':
     ray.shutdown()
     ray.init()
-    wrapper = ray_wrapper({'concated_states':True})
+    wrapper = RayWrapper()
     ModelCatalog.register_custom_model("my_model", Network)
     register_env("my_env", lambda config: RayEnv(config, wrapper))
 
