@@ -28,7 +28,6 @@ class Network(RecurrentNetwork, nn.Module):
         nn.Module.__init__(self)
         super(Network, self).__init__(
             obs_space, action_space, None, model_config, name)
-        
         """
         网络参数设置说明：
         MLP 神经网络输入大小：  102 - >  
@@ -41,7 +40,6 @@ class Network(RecurrentNetwork, nn.Module):
         action / value 输入 : 512
         action hidden layers + output layer:  [256, 52]
         value hidden layer + output layer:    [256, 1]
-
         model_config ={
         "embedding_size": 512,
         "GNN_output_size": 1024,
@@ -105,7 +103,7 @@ class Network(RecurrentNetwork, nn.Module):
                                                                              dropout=False,
                                                                              alpha=0,
                                                                              concat=True) for _ in range(self.GNN_heading_size)])
-        
+
             self.common_layers["action_nn"] = nn.ModuleList([
                 nn.Sequential([nn.Linear(self.GNN_output_size,self.action_policy_size),
                                nn.functional.relu,
@@ -123,7 +121,7 @@ class Network(RecurrentNetwork, nn.Module):
                                nn.functional.relu,
                                nn.Linear(self.value_policy_size,1)] )for _ in range(self.player_typenum)
             ])
-
+    
     def forward(
         self,
         input_dict,
@@ -142,7 +140,7 @@ class Network(RecurrentNetwork, nn.Module):
         # global state: 30
         # slel_state / ally / enemy :  73
         # action mask: 52
-
+        
         # inputs: [batch_size, seq_len, observation]
         # states: [batch_size, observation]
         # size

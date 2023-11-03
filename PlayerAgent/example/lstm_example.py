@@ -28,7 +28,7 @@ class MyCustomModel(TorchModelV2):
         # This will further be sent through an automatically provided
         # LSTM head (b/c we are setting use_lstm=True below).
         return obs * 2.0, []
-
+    
     def value_function(self):
         return torch.from_numpy(np.zeros(shape=(self._last_batch_size,)))
 
