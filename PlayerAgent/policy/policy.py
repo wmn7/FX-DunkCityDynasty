@@ -120,7 +120,7 @@ class Network(RecurrentNetwork, nn.Module):
                                nn.Linear(self.value_output_size, 1))
                 for _ in range(self.player_typenum)
             ])
-            self.common_layers(f"solo_action_nn",self.common_layers["solo_value_nn"])
+            self.add_module(f"solo_action_nn", self.common_layers["solo_value_nn"])
             self.common_layers["team_value_nn"] = nn.ModuleList([
                 nn.Sequential(nn.Linear(self.GNN_1_output_size, self.value_output_size),
                                nn.ReLU(),
@@ -128,7 +128,12 @@ class Network(RecurrentNetwork, nn.Module):
             ])
             self.add_module(f"team_value_nn",self.common_layers["team_value_nn"])
             self.params = self.common_layers
+        else:
+            # print("DEBUG: common_layers is not None")
+            # print("DEBUG: common_layers", self.common_layers)
+            self.params = self.common_layers
 
+# nn.ParameterList
     @override(RecurrentNetwork)
     def forward(
             self,
@@ -242,9 +247,9 @@ class Network(RecurrentNetwork, nn.Module):
         # 加入 action mask
         zero_matrix = t.zeros_like(action_logit)
         action_logit = t.where(action_masks != 0, action_logit, zero_matrix)
-        print("action_masks", action_masks.shape) # torch.Size([32, 1, 52]
-        print(action_masks)
-        print("action_logit", action_logit.shape) # torch.Size([32, 1, 52]
+        # print("action_masks", action_masks.shape) # torch.Size([32, 1, 52]
+        # print(action_masks)
+        # print("action_logit", action_logit.shape) # torch.Size([32, 1, 52]
 
         return action_logit, [output_hidden_states]
 
