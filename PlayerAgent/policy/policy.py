@@ -31,8 +31,6 @@ class Network(RecurrentNetwork, nn.Module):
             self, obs_space, action_space, None, model_config, name, **kwargs
         )
         nn.Module.__init__(self)
-        super(Network, self).__init__(
-            obs_space, action_space, None, model_config, name)
         """
         网络参数设置说明：
         MLP 神经网络输入大小：        102 - >  mlp_embedding_size: 512 (RNN input size)

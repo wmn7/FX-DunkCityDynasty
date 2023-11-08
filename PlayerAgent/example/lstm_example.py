@@ -20,8 +20,10 @@ class MyCustomModel(TorchModelV2):
     # Implement your own forward logic, whose output will then be sent
     # through an LSTM.
     def forward(self, input_dict, state, seq_lens):
+        print("-----------------")
+        print("forward in custom model")
         obs = input_dict["obs_flat"]
-        print("obs shape in CustomModel:  ", obs.shape)
+        # print("obs shape in CustomModel:  ", obs.shape)
         # Store last batch size for value_function output.
         self._last_batch_size = obs.shape[0]
         # Return 2x the obs (and empty states).
@@ -32,18 +34,16 @@ class MyCustomModel(TorchModelV2):
     def value_function(self):
         return torch.from_numpy(np.zeros(shape=(self._last_batch_size,)))
 
-
 if __name__ == "__main__":
     ray.init()
     
     # Register the above custom model.
     ModelCatalog.register_custom_model("my_torch_model", MyCustomModel)
-    
-    # Create the Algorithm from a config object.
     config = (
         ppo.PPOConfig()
         .environment("CartPole-v1")
         .framework("torch")
+        .resources(num_gpus=0)
         .training(
             model={
                 # Auto-wrap the custom(!) model with an LSTM.
@@ -58,5 +58,7 @@ if __name__ == "__main__":
         )
     )
     algo = config.build()
+    print("-----------------training---------------------")
     algo.train()
+    print("------------------training finish-------------")
     algo.stop()
