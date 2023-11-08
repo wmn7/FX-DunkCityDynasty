@@ -1,11 +1,12 @@
 id: 1
 env_setting: "linux"
-client_path: '/home/wmn/FX-DunkCityDynasty/game_package_release'
-rl_server_ip: '127.0.0.1'
+client_path: '/home/tsaisplus/basketball_comp/game_package_release'
+rl_server_ip: '100.69.159.130'
 rl_server_port: 42636
-game_server_ip: 'xxx'
+game_server_ip: '47.111.110.225'
 game_server_port: 18001
 machine_server_ip: ''
 machine_server_port: 0
-user_name: 'xxx'
+user_name: 'qmxsardcf17ob'
 episode_horizon: 100000
+render: True

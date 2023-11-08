@@ -1,6 +1,7 @@
 import numpy as np
 import torch as t
 import torch.nn as nn
+from collections import OrderedDict
 from ray.rllib.models.torch.recurrent_net import RecurrentNetwork
 from ray.rllib.utils.annotations import override
 from PlayerAgent.policy.GAT import GAT
@@ -10,7 +11,7 @@ class Network(RecurrentNetwork, nn.Module):
 
     player_typenum = 5
     tau = 1
-    common_layers = nn.ParameterDict({
+    common_layers = nn.ModuleDict({
                     "type_embedding":None,
                     "embedding_act":None,
                     "RNN":None,
@@ -19,7 +20,7 @@ class Network(RecurrentNetwork, nn.Module):
                     "action_nn":None,
                     "solo_value_nn":None,
                     "team_value_nn":None
-                })   
+                })
     def __init__(self,
                  obs_space,
                  action_space,
@@ -32,7 +33,7 @@ class Network(RecurrentNetwork, nn.Module):
         )
         nn.Module.__init__(self)
         super(Network, self).__init__(
-            obs_space, action_space, None, model_config, name)
+            obs_space, action_space, 52, model_config, name)
         """
         网络参数设置说明：
         MLP 神经网络输入大小：        102 - >  mlp_embedding_size: 512 (RNN input size)
@@ -125,6 +126,7 @@ class Network(RecurrentNetwork, nn.Module):
                                nn.ReLU(),
                                nn.Linear(self.value_output_size, 1)) for _ in range(self.player_typenum)
             ])
+            self.params = self.common_layers
 
     @override(RecurrentNetwork)
     def forward(
@@ -161,8 +163,8 @@ class Network(RecurrentNetwork, nn.Module):
 
         ## 输入形状处理
         # size: [batch_size, seq_Len, action_mask_size]
-        action_masks = inputs[:, :, -action_mask_size:]
-        # size: [batch_szie, seq_len, agent_num, global_size]
+        action_masks = inputs[:, -1:, -action_mask_size:]
+        # size: [batch_size, seq_len, agent_num, global_size]
         global_inputs = inputs[:, :, :global_vec_size].unsqueeze(2).expand([-1, -1, agent_num, -1])
         # size: [batch_size, seq_len, agent_num, agent__vec_size]
         agent_inputs = inputs[:, :, global_vec_size:-action_mask_size].reshape(batch_size, seq_len, agent_num, -1)
@@ -196,10 +198,10 @@ class Network(RecurrentNetwork, nn.Module):
                 self.common_layers["type_embedding"][player_type_index](vec)
             )
             # RNN 操作
-            print('MLP embedding', embedding.shape) # torch.Size([1, 512])
+            # print('MLP embedding', embedding.shape) # torch.Size([1, 512])
             # print('batch_agent_hidden_state_i', batch_agent_hidden_state.shape) # torch.Size([1, 1024]
             rnn_embedding, h = self.common_layers["RNN"](embedding, batch_agent_hidden_state[i].unsqueeze(0))
-            print('rnn_embedding', rnn_embedding.shape) # torch.Size([1, 1024])
+            # print('rnn_embedding', rnn_embedding.shape) # torch.Size([1, 1024])
             # rnn embedding [seq_len, size]  -> [size]
             GNN_inputs_list.append(rnn_embedding[-1,:])
             output_hidden_states_list.append(h)
@@ -228,7 +230,7 @@ class Network(RecurrentNetwork, nn.Module):
 
         # 经过 action_policy
         # size:  [batch_size,output_size]
-        action_logit = t.cat([self.common_layers["action_nn"][self.player_type_np [i]](self._features[i, 0, :]).unsqueeze(0) for i in range(batch_size)],
+        action_logit = t.cat([self.common_layers["action_nn"][self.player_type_np[i]](self._features[i, 0, :]).unsqueeze(0) for i in range(batch_size)],
                              dim=0)
         action_logit = action_logit.unsqueeze(1)
         # value :
@@ -239,7 +241,12 @@ class Network(RecurrentNetwork, nn.Module):
         # 加入 action mask
         zero_matrix = t.zeros_like(action_logit)
         action_logit = t.where(action_masks != 0, action_logit, zero_matrix)
+        print("action_masks", action_masks.shape) # torch.Size([32, 1, 52]
+        print(action_masks)
         print("action_logit", action_logit.shape) # torch.Size([32, 1, 52]
+
+        action_logit = t.tile(action_logit, [1, seq_len, 1])
+        print("action_logit_post", action_logit.shape) # torch.Size([32, 1, 52]
 
         return action_logit, [output_hidden_states]
 
@@ -256,9 +263,10 @@ class Network(RecurrentNetwork, nn.Module):
         solo_value = t.cat([self.common_layers["solo_value_nn"][self.player_type_np[i]](self._features[i, 0, :]) for i in range(batch_size)],
                            dim=0)
         team_value = t.cat([self.common_layers["team_value_nn"][self.player_type_np[i]](
-            self._features[i, 0, :] + self._features[i, 2, :] + self._features[i, 2, :])
+            self._features[i, 0, :] + self._features[i, 1, :] + self._features[i, 2, :])
             for i in range(batch_size)], dim=0)
         value = self.tau * solo_value + (1 - self.tau) * team_value
+        # print("value shape", value.shape)
         return t.reshape(value, [-1])
 
     @override(ModelV2)

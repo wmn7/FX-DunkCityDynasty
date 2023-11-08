@@ -34,7 +34,7 @@ if __name__ == '__main__':
         PPOConfig()
         .framework("torch")
         .rollouts(
-            num_rollout_workers=2,
+            num_rollout_workers=0,
             num_envs_per_worker=1,
             # rollout_fragment_length='auto',
             enable_connectors=False,
@@ -61,10 +61,11 @@ if __name__ == '__main__':
             policy_mapping_fn= lambda agent_id, episode, worker, **kwargs: "shared_policy",
         )
         .debugging(
-            log_level="INFO",
+            log_level="DEBUG",
         )
     )
     algo = config.build()
+    print("start training")
     while True:
         algo.train()
 

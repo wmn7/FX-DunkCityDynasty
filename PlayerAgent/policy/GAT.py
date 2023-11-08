@@ -24,7 +24,7 @@ class GAT(nn.Module):
         # h input size: batch_size, N, in_features
         batch_size = h.shape[0]
         agent_num = h.shape[1]
-        print("GNN input h shape: ", h.shape)
+        # print("GNN input h shape: ", h.shape)
         # to [batch_size, N, head_num, every_in_features] -> [batch_size, head_num, N, every_in_features]
         h_every_head = h.reshape(batch_size,agent_num,self.head_num,-1).permute(0,2,1,3)
         # [batch_size, agent_num, out_feature]
