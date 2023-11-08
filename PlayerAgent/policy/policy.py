@@ -85,7 +85,7 @@ class Network(RecurrentNetwork, nn.Module):
             for _ in range(self.player_typenum):
                 self.common_layers["type_embedding"].append(nn.Linear(self.agent_obs_size, self.mlp_embedding_size))
             self.common_layers["embedding_act"] = nn.ReLU()
-
+            self.add_module(f"type_embedding",self.common_layers["type_embedding"])
             # 设置 RNN模块
             # batch first  [batch,seq_len,observation]
             
@@ -93,37 +93,40 @@ class Network(RecurrentNetwork, nn.Module):
                                                self.rnn_output_size,
                                                1,
                                                batch_first=True)
-
+            self.add_module(f"RNN",self.common_layers["RNN"])
             self.common_layers["GNN_0"] = GAT(self.rnn_output_size,
                                               self.GNN_0_output_size,
                                               self.GNN_0_heading_size,
                                               self.alpha,
                                               True)
+            self.add_module(f"GNN_0",self.common_layers["GNN_0"])
 
             self.common_layers["GNN_1"] = GAT(self.GNN_0_output_size,
                                               self.GNN_1_output_size,
                                               self.GNN_1_heading_size,
                                               self.alpha,
                                               True)
+            self.add_module(f"GNN_1",self.common_layers["GNN_1"])
 
             self.common_layers["action_nn"] = nn.ModuleList([
                 nn.Sequential(nn.Linear(self.GNN_1_output_size, self.action_embeding_size),
                                nn.ReLU(),
                                nn.Linear(self.action_embeding_size, self.action_output_size))
                 for _ in range(self.player_typenum)])
-
+            self.add_module(f"action_nn",self.common_layers["action_nn"])
             self.common_layers["solo_value_nn"] = nn.ModuleList([
                 nn.Sequential(nn.Linear(self.GNN_1_output_size, self.value_output_size),
                                nn.ReLU(),
                                nn.Linear(self.value_output_size, 1))
                 for _ in range(self.player_typenum)
             ])
-
+            self.common_layers(f"solo_action_nn",self.common_layers["solo_value_nn"])
             self.common_layers["team_value_nn"] = nn.ModuleList([
                 nn.Sequential(nn.Linear(self.GNN_1_output_size, self.value_output_size),
                                nn.ReLU(),
                                nn.Linear(self.value_output_size, 1)) for _ in range(self.player_typenum)
             ])
+            self.add_module(f"team_value_nn",self.common_layers["team_value_nn"])
             self.params = self.common_layers
 
     @override(RecurrentNetwork)
