@@ -213,14 +213,14 @@ class Network(RecurrentNetwork, nn.Module):
         self.player_type_np = player_type_np[:, 0]
 
         # [batch*seq_len, agent_num, -1]
-        GNN_input = t.cat(GNN_inputs_list, dim=0).reshape(batch_size, agent_num, seq_len, -1).transpose(0,2,1,3).reshape(batch_size*seq_len,agent_num,-1)
+        GNN_input = t.cat(GNN_inputs_list, dim=0).reshape(batch_size, agent_num, seq_len, -1).transpose(2,1).reshape(batch_size*seq_len,agent_num,-1)
         # [batch*agent_num, -1]
         output_hidden_states = t.cat(output_hidden_states_list, dim=0)
         # 进入GNN
         # size: [batch_size*seq_len,agent_num, -1]
         GNN_0 = self.common_layers["GNN_0"](GNN_input)
         # size: [batch_size,agent_num,seq_len,-1]
-        GNN_1 = self.common_layers["GNN_1"](GNN_0).reshape(batch_size,seq_len,agent_num,-1).transpose(0,2,1,3)
+        GNN_1 = self.common_layers["GNN_1"](GNN_0).reshape(batch_size,seq_len,agent_num,-1).transpose(2,1)
         # size: [batch_size,seq_len, agent_num, -1]
         self._features = GNN_1
         # print("self._features", self._features.shape) # torch.Size([32, 6, 1024])
@@ -263,7 +263,7 @@ class Network(RecurrentNetwork, nn.Module):
         value = self.tau * solo_value + (1 - self.tau) * team_value
         # print("value shape", value.shape)
         return t.reshape(value, [-1])
-    
+
     @override(ModelV2)
     def get_initial_state(self):
         """
