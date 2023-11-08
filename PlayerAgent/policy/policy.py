@@ -263,7 +263,7 @@ class Network(RecurrentNetwork, nn.Module):
         value = self.tau * solo_value + (1 - self.tau) * team_value
         # print("value shape", value.shape)
         return t.reshape(value, [-1])
-
+    
     @override(ModelV2)
     def get_initial_state(self):
         """
